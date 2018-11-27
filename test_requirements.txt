@@ -1,0 +1,7 @@
+flake8
+mypy<1
+pytest
+pytest-mock
+pytest-watch
+pytest-mypy
+pytest-flake8

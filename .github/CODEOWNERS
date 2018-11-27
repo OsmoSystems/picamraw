@@ -1,0 +1,3 @@
+# This sets default codeowners for the repo. These people get automatically requested for review
+# See https://help.github.com/articles/about-codeowners/
+*       @OsmoSystems/software
