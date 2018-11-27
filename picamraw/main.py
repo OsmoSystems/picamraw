@@ -9,7 +9,16 @@ from .resolution import PiResolution
 
 def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     ''' Convert the 2D `bayer_array` attribute to a 3D RGB array, in which each value in the original 2D array is
-    moved to one of the three R,G, or B channels.
+        moved to one of the three R,G, or B channels.
+
+    Args:
+        bayer_array: the 2D bayer array to convert
+        bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
+
+    Returns:
+        A 3D numpy array. This array has the same 2D dimensions as the input `bayer_array`, but pulls each pixel
+        out into either the R, G, or B channel in the 3rd dimension. It determines whether a given pixel is
+        R, G, or B using the provided `bayer_order`.
 
     Example:
         bayer_array_to_3d(
@@ -23,10 +32,6 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
             [[1, 0, 0], [0, 2, 0]],
             [[0, 3, 0], [0, 0, 4]],
         ])
-
-    Args:
-        bayer_array: the 2D bayer array to convert
-        bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
     '''
 
     # Prepare an empty 3D array that has the same 2D dimensions as the bayer array
@@ -117,7 +122,9 @@ class PiRawBayer():
         Args:
             filepath: The full path of the JPEG+RAW image to extract raw data from
             camera_version: A `PiCameraVersion` enum representing the camera hardware version used to capture the image
-            sensor_mode: Optional - defaults to 0. An integer representing the `sensor_mode` used to capture the image
+            sensor_mode: Optional - defaults to 0. An integer representing the `sensor_mode` used to capture the image.
+                See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
+                on sensor_modes.
         '''
         super(PiRawBayer, self).__init__()
 
