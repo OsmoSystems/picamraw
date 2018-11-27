@@ -1,3 +1,4 @@
+import io
 import pkg_resources
 
 import numpy as np
@@ -15,7 +16,7 @@ picamv2_3d_path = pkg_resources.resource_filename(__name__, 'test_fixtures/picam
 class TestPiRawBayer:
     raw_bayer = module.PiRawBayer(
         filepath=picamv2_jpeg_path,
-        camera_version=PiCameraVersion.V2,
+        camera_version=PiCameraVersion.V2.value,
         sensor_mode=0
     )
 
@@ -28,12 +29,36 @@ class TestPiRawBayer:
         assert self.raw_bayer.bayer_array[-1][-1] == 65
 
         # Compare to full np array
+        actual = self.raw_bayer.bayer_array
         expected = np.load(picamv2_BGGR_bayer_array_path)
-        assert np.array_equal(self.raw_bayer.bayer_array, expected)
+
+        np.testing.assert_array_equal(actual, expected)
 
     def test_to_3d(self):
+        actual = self.raw_bayer.to_3d()
         expected = np.load(picamv2_3d_path)
-        assert np.array_equal(self.raw_bayer.to_3d(), expected)
+
+        np.testing.assert_array_equal(actual, expected)
+
+    def test_get_raw_bytes(self, mocker):
+        mock_stream_with_correct_prefix = io.BytesIO(b'initial-file-contents-BRCM-test-stream')
+
+        mocker.patch.object(self.raw_bayer, '_get_raw_block_size').return_value = 16
+
+        actual = self.raw_bayer._get_raw_bytes(
+            byte_stream=mock_stream_with_correct_prefix
+        )
+
+        assert actual == b'BRCM-test-stream'
+
+    def test_get_raw_bytes__raises_if_missing_prefix(self, mocker):
+        with pytest.raises(ValueError):
+            mock_stream_with_missing_prefix = io.BytesIO(b'initial-file-contents-test-stream')
+
+            mocker.patch.object(self.raw_bayer, '_get_raw_block_size').return_value = 16
+            self.raw_bayer._get_raw_bytes(
+                byte_stream=mock_stream_with_missing_prefix
+            )
 
 
 class TestBayerArrayTo3D:
@@ -63,7 +88,7 @@ class TestBayerArrayTo3D:
     def test_splits_to_rgb_using_bayer_order(self, bayer_order, expected):
         actual = module.bayer_array_to_3d(self.bayer_array, bayer_order)
 
-        assert np.array_equal(actual, expected)
+        np.testing.assert_array_equal(actual, expected)
 
     def test_integration(self):
         bayer_array = np.load(picamv2_BGGR_bayer_array_path)
@@ -71,4 +96,4 @@ class TestBayerArrayTo3D:
 
         expected = np.load(picamv2_3d_path)
 
-        assert np.array_equal(actual, expected)
+        np.testing.assert_array_equal(actual, expected)

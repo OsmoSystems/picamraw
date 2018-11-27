@@ -9,7 +9,7 @@ from picamraw.constants import PiCameraVersion
 
 raw_bayer = PiRawBayer(
     filepath='path/to/image.jpeg',
-    camera_version=PiCameraVersion.V2,
+    camera_version=PiCameraVersion.V2.value,
     sensor_mode=0
 )
 raw_bayer.bayer_array   # A 16-bit 2D numpy array of the bayer data

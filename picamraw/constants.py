@@ -27,13 +27,6 @@ class BayerOrder(Enum):
     BGGR = 'BGGR'
     GRBG = 'GRBG'
 
-    # TODO: should the enum save these values instead?
-    # (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
-    # 0: ((0, 0), (1, 0), (0, 1), (1, 1)),  # RGGB
-    # 1: ((1, 0), (0, 0), (1, 1), (0, 1)),  # GBRG
-    # 2: ((1, 1), (0, 1), (1, 0), (0, 0)),  # BGGR
-    # 3: ((0, 1), (1, 1), (0, 0), (1, 0)),  # GRBG
-
 
 BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES = {
     # (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
