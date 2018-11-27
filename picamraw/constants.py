@@ -7,7 +7,7 @@ class PiCameraVersion(Enum):
 
 
 class BayerOrder(Enum):
-    ''' There are four possible arrangements of the R, G, G, and B pixels:
+    ''' There are four supported arrangements of the R, G, G, and B pixels:
         RGGB:
               RG
               GB
