@@ -109,8 +109,9 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
 
     Returns:
         A 3D numpy array. This array has the same 2D dimensions as the input `bayer_array`, but pulls each pixel
-        out into either the R, G, or B channel in the 3rd dimension. It determines whether a given pixel is
-        R, G, or B using the provided `bayer_order`.
+        out into either the R, G, or B channel in the 3rd dimension. Thus, each "pixel" in the output array will be
+        [R, G, B] where 2 of R, G, and B are 0 and the other contains a value from bayer_array.
+        It determines whether a given pixel is R, G, or B using the provided `bayer_order`.
 
     Example:
         bayer_array_to_3d(
@@ -142,10 +143,9 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     ) = BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES[bayer_order]
 
     # Keeps pixels in the same 2D location, but separates into RGB channels based on bayer order
-    R_CHANNEL_INDEX = 0
-    G_CHANNEL_INDEX = 1
-    B_CHANNEL_INDEX = 2
-
+    # Increment by 2: a given color will be in every other column in every other row in the bayer array
+    # "Seed" this incrementating using the (x,y) coordinates of that color in the first 2x2 corner of the array
+    R_CHANNEL_INDEX, G_CHANNEL_INDEX, B_CHANNEL_INDEX = [0, 1, 2]
     array_3d[ry::2, rx::2, R_CHANNEL_INDEX] = bayer_array[ry::2, rx::2]  # Red
     array_3d[gy::2, gx::2, G_CHANNEL_INDEX] = bayer_array[gy::2, gx::2]  # Green
     array_3d[Gy::2, Gx::2, G_CHANNEL_INDEX] = bayer_array[Gy::2, Gx::2]  # Green
