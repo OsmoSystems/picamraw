@@ -16,7 +16,7 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
             bayer_array=np.array([
                 [1, 2],
                 [3, 4],
-            ],
+            ]),
             bayer_order=BayerOrder.RGGB
         )
         >>> np.array([
