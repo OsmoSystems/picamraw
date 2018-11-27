@@ -1,10 +1,102 @@
-import io
 import ctypes
 
 import numpy as np
 
 from .constants import PiCameraVersion, BayerOrder
 from .resolution import PiResolution
+
+
+class PiRawBayer:
+    ''' Extracts the raw 10-bit bayer data from a Raspberry Pi camera JPEG+RAW file into a 16-bit numpy array
+
+    Attrs:
+        bayer_data: The raw bayer data as a 16-bit 2D numpy array
+        bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
+    '''
+    def __init__(self, filepath, camera_version: PiCameraVersion, sensor_mode=0):
+        ''' Initializing a PiRawBayer object results in extracting the raw bayer data from the provided JPEG+RAW file.
+
+        Args:
+            filepath: The full path of the JPEG+RAW image to extract raw data from
+            camera_version: A `PiCameraVersion` enum representing the camera hardware version used to capture the image
+            sensor_mode: Optional - defaults to 0. An integer representing the `sensor_mode` used to capture the image.
+                See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
+                on sensor_modes.
+        '''
+
+        bayer_array, bayer_order = extract_raw_from_jpeg(filepath, camera_version, sensor_mode)
+        self.bayer_array = bayer_array
+        self.bayer_order = bayer_order
+
+    def to_3d(self):
+        return bayer_array_to_3d(self.bayer_array, self.bayer_order)
+
+    def to_rgb(self):
+        # TODO: collapse 2x2 into single pixel, averaging green channel
+        pass
+
+
+BROADCOM_BAYER_ORDER_TO_ENUM = {
+    0: BayerOrder.RGGB,
+    1: BayerOrder.GBRG,
+    2: BayerOrder.BGGR,
+    3: BayerOrder.GRBG,
+}
+
+# Byte offsets for header (metadata) and pixel data within the raw bayer data
+HEADER_BYTE_OFFSET = 176
+PIXEL_BYTE_OFFSET = 32768
+
+
+class BroadcomRawHeader(ctypes.Structure):
+    _fields_ = [
+        ('name',          ctypes.c_char * 32),
+        ('width',         ctypes.c_uint16),
+        ('height',        ctypes.c_uint16),
+        ('padding_right', ctypes.c_uint16),
+        ('padding_down',  ctypes.c_uint16),
+        ('dummy',         ctypes.c_uint32 * 6),
+        ('transform',     ctypes.c_uint16),
+        ('format',        ctypes.c_uint16),
+        ('bayer_order',   ctypes.c_uint8),
+        ('bayer_format',  ctypes.c_uint8),
+    ]
+
+
+def extract_raw_from_jpeg(filepath, camera_version, sensor_mode):
+    ''' Extracts the raw 10-bit bayer data from a Raspberry Pi camera JPEG+RAW file into a 16-bit numpy array
+
+    Args:
+        filepath: The full path of the JPEG+RAW image to extract raw data from
+        camera_version: A `PiCameraVersion` enum representing the camera hardware version used to capture the image
+        sensor_mode: Optional - defaults to 0. An integer representing the `sensor_mode` used to capture the image.
+            See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
+            on sensor_modes.
+
+    Returns: (bayer_data, bayer_order)
+        bayer_data: The raw bayer data as a 16-bit 2D numpy array
+        bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
+    '''
+
+    # Using mode='rb' opens the file data as bytes
+    with open(filepath, mode='rb') as file:
+        jpeg_data_as_bytes = file.read()
+
+    raw_bytes = _get_raw_bayer_bytes(jpeg_data_as_bytes, camera_version, sensor_mode)
+
+    # Extract header (metadata) and pixel data using known byte offsets
+    header = BroadcomRawHeader.from_buffer_copy(
+        raw_bytes[HEADER_BYTE_OFFSET:HEADER_BYTE_OFFSET + ctypes.sizeof(BroadcomRawHeader)]
+    )
+
+    # Extract the 1D array of 8-bit (1-byte) values that collectively represent the pixel data
+    # Note: pixel data is actually 10-bits per pixel, but is packed into 8-bit values
+    pixel_bytes = np.frombuffer(raw_bytes, dtype=np.uint8, offset=PIXEL_BYTE_OFFSET)
+
+    bayer_array = _pixel_bytes_to_array(pixel_bytes, header)
+    bayer_order = BROADCOM_BAYER_ORDER_TO_ENUM[header.bayer_order]
+
+    return bayer_array, bayer_order
 
 
 def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
@@ -62,164 +154,78 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     return array_3d
 
 
-class BroadcomRawHeader(ctypes.Structure):
-    _fields_ = [
-        ('name',          ctypes.c_char * 32),
-        ('width',         ctypes.c_uint16),
-        ('height',        ctypes.c_uint16),
-        ('padding_right', ctypes.c_uint16),
-        ('padding_down',  ctypes.c_uint16),
-        ('dummy',         ctypes.c_uint32 * 6),
-        ('transform',     ctypes.c_uint16),
-        ('format',        ctypes.c_uint16),
-        ('bayer_order',   ctypes.c_uint8),
-        ('bayer_format',  ctypes.c_uint8),
-    ]
-
-
-class PiRawBayer():
+def _pixel_bytes_to_array(pixel_bytes, header):
+    ''' Convert the 1D array of 8-bit values ("packed" 10-bit values) to a 2D array of 10-bit values. Every 5 bytes
+        contains the high 8-bits of 4 values followed by the low 2-bits of 4 values packed into the fifth byte
     '''
-    Extracts the raw 10-bit bayer data from a Raspberry Pi camera JPEG+RAW file into a 16-bit numpy array
-    '''
-    BROADCOM_BAYER_ORDER_TO_ENUM = {
-        0: BayerOrder.RGGB,
-        1: BayerOrder.GBRG,
-        2: BayerOrder.BGGR,
-        3: BayerOrder.GRBG,
-    }
+    # Reshape and crop the data. The crop's width is multiplied by 5/4 to deal with the packed 10-bit format;
+    # the shape's width is calculated in a similar fashion but with padding included (which involves
+    # several additional padding steps)
+    crop = PiResolution(
+        header.width * 5 // 4,
+        header.height
+    )
 
-    # Size of the block (in bytes) of the raw bayer data within the full JPEG+RAW file
-    RAW_BLOCK_SIZE_BY_VERSION_AND_MODE = {
-        PiCameraVersion.V1.value: {
-            0: 6404096,
-            1: 2717696,
-            2: 6404096,
-            3: 6404096,
-            4: 1625600,
-            5: 1233920,
-            6: 445440,
-            7: 445440,
-        },
-        PiCameraVersion.V2.value: {
-            0: 10270208,
-            1: 2678784,
-            2: 10270208,
-            3: 10270208,
-            4: 2628608,
-            5: 1963008,
-            6: 1233920,
-            7: 445440,
-        },
-    }
+    shape = PiResolution(
+        (((header.width + header.padding_right) * 5) + 3) // 4,
+        (header.height + header.padding_down)
+    ).pad()
 
-    # Byte offsets for header (metadata) and pixel data within the raw bayer data
-    HEADER_BYTE_OFFSET = 176
-    PIXEL_BYTE_OFFSET = 32768
+    pixel_bytes_2d = pixel_bytes.reshape((shape.height, shape.width))[:crop.height, :crop.width]
 
-    def __init__(self, filepath, camera_version: PiCameraVersion, sensor_mode=0):
-        ''' Initializing a PiRawBayer object results in extracting the raw bayer data from the provided JPEG+RAW file
+    # Unpack 10-bit values; every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of
+    # 4 values packed into the fifth byte
 
-        Args:
-            filepath: The full path of the JPEG+RAW image to extract raw data from
-            camera_version: A `PiCameraVersion` enum representing the camera hardware version used to capture the image
-            sensor_mode: Optional - defaults to 0. An integer representing the `sensor_mode` used to capture the image.
-                See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
-                on sensor_modes.
-        '''
-        super(PiRawBayer, self).__init__()
+    data = pixel_bytes_2d.astype(np.uint16) << 2
+    for byte in range(4):
+        data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 3)
 
-        self._header = None
-        self._camera_version = camera_version
-        self._sensor_mode = sensor_mode
-        self._filepath = filepath
+    array = np.zeros(
+        (data.shape[0], data.shape[1] * 4 // 5), dtype=np.uint16)
 
-        self._extract(filepath)
+    for i in range(4):
+        array[:, i::4] = data[:, i::5]
 
-    @property
-    def bayer_order(self):
-        ''' A `BayerOrder` enum representing the arrangement of R,G,G,B pixels in the bayer array '''
-        return self.BROADCOM_BAYER_ORDER_TO_ENUM[self._header.bayer_order]
+    return array
 
-    def _get_raw_block_size(self):
-        return self.RAW_BLOCK_SIZE_BY_VERSION_AND_MODE[self._camera_version][self._sensor_mode]
 
-    def _extract(self, filepath):
-        with open(filepath, mode='rb') as file:
-            jpeg_data = file.read()
+# Size of the block of the raw bayer data (in bytes) within the full JPEG+RAW file
+RAW_BLOCK_SIZE_BY_VERSION_AND_MODE = {
+    PiCameraVersion.V1.value: {
+        0: 6404096,
+        1: 2717696,
+        2: 6404096,
+        3: 6404096,
+        4: 1625600,
+        5: 1233920,
+        6: 445440,
+        7: 445440,
+    },
+    PiCameraVersion.V2.value: {
+        0: 10270208,
+        1: 2678784,
+        2: 10270208,
+        3: 10270208,
+        4: 2628608,
+        5: 1963008,
+        6: 1233920,
+        7: 445440,
+    },
+}
 
-        byte_stream = io.BytesIO()
-        byte_stream.write(jpeg_data)
-        byte_stream.flush()
 
-        raw_bytes = self._get_raw_bytes(byte_stream)
+def _get_raw_block_size(camera_version, sensor_mode):
+    return RAW_BLOCK_SIZE_BY_VERSION_AND_MODE[camera_version][sensor_mode]
 
-        # Extract header (metadata) and pixel data using known byte offsets
-        self._header = BroadcomRawHeader.from_buffer_copy(
-            raw_bytes[self.HEADER_BYTE_OFFSET:self.HEADER_BYTE_OFFSET + ctypes.sizeof(BroadcomRawHeader)]
-        )
 
-        # Extract the 1D array of 8-bit (1-byte) values that collectively represent the pixel data
-        # Note: pixel data is actually 10-bits per pixel, but is packed into 8-bit values
-        pixel_bytes = np.frombuffer(
-            raw_bytes,
-            dtype=np.uint8,
-            offset=self.PIXEL_BYTE_OFFSET
-        )
+def _get_raw_bayer_bytes(jpeg_data_as_bytes, camera_version, sensor_mode):
+    ''' Extract the bytes that represent the raw bayer data from the contents of a JPEG+RAW file '''
+    # The raw bayer data is at the end of the file, so extract an appropriately-sized block of data from the end
+    raw_block_size = _get_raw_block_size(camera_version, sensor_mode)
+    raw_bytes = jpeg_data_as_bytes[-raw_block_size:]
 
-        self.bayer_array = self._pixel_bytes_to_array(pixel_bytes)
+    # Bayer data should start with 'BCRM'
+    if raw_bytes[:4] != b'BRCM':
+        raise ValueError('Unable to locate Bayer data at end of buffer')
 
-        byte_stream.close()
-
-    def _get_raw_bytes(self, byte_stream):
-        ''' Extract the bytes that represent the raw bayer data from the contents of a JPEG+RAW file '''
-        # The raw data is at the end of the file, so extract an appropriately-sized block of data from the end
-        raw_block_size = self._get_raw_block_size()
-        raw_bytes = byte_stream.getvalue()[-raw_block_size:]
-
-        # Bayer data should start with 'BCRM'
-        if raw_bytes[:4] != b'BRCM':
-            raise ValueError('Unable to locate Bayer data at end of buffer')
-
-        return raw_bytes
-
-    def _pixel_bytes_to_array(self, pixel_bytes):
-        ''' Convert the 1D array of 8-bit values ("packed" 10-bit values) to a 2D array of 10-bit values. Every 5 bytes
-            contains the high 8-bits of 4 values followed by the low 2-bits of 4 values packed into the fifth byte
-        '''
-        # Reshape and crop the data. The crop's width is multiplied by 5/4 to
-        # deal with the packed 10-bit format; the shape's width is calculated
-        # in a similar fashion but with padding included (which involves
-        # several additional padding steps)
-        crop = PiResolution(
-            self._header.width * 5 // 4,
-            self._header.height
-        )
-
-        shape = PiResolution(
-            (((self._header.width + self._header.padding_right) * 5) + 3) // 4,
-            (self._header.height + self._header.padding_down)
-        ).pad()
-
-        pixel_bytes_2d = pixel_bytes.reshape((shape.height, shape.width))[:crop.height, :crop.width]
-
-        # Unpack 10-bit values; every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of
-        # 4 values packed into the fifth byte
-
-        data = pixel_bytes_2d.astype(np.uint16) << 2
-        for byte in range(4):
-            data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 3)
-
-        array = np.zeros(
-            (data.shape[0], data.shape[1] * 4 // 5), dtype=np.uint16)
-
-        for i in range(4):
-            array[:, i::4] = data[:, i::5]
-
-        return array
-
-    def to_3d(self):
-        return bayer_array_to_3d(self.bayer_array, self.bayer_order)
-
-    def to_rgb(self):
-        # TODO: collapse 2x2 into single pixel, averaging green channel
-        pass
+    return raw_bytes
