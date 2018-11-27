@@ -9,7 +9,7 @@ class TestPiResolution:
         assert actual == expected
 
     def test_pad__adds_custom_padding(self):
-        actual = module.PiResolution(100, 100).pad(16, 16)
-        expected = module.PiResolution(width=112, height=112)
+        actual = module.PiResolution(100, 200).pad(9, 11)
+        expected = module.PiResolution(width=108, height=209)
 
         assert actual == expected

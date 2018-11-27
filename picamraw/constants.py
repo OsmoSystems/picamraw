@@ -26,12 +26,3 @@ class BayerOrder(Enum):
     GBRG = 'GBRG'
     BGGR = 'BGGR'
     GRBG = 'GRBG'
-
-
-BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES = {
-    # (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
-    BayerOrder.RGGB: ((0, 0), (1, 0), (0, 1), (1, 1)),  # RGGB
-    BayerOrder.GBRG: ((1, 0), (0, 0), (1, 1), (0, 1)),  # GBRG
-    BayerOrder.BGGR: ((1, 1), (0, 1), (1, 0), (0, 0)),  # BGGR
-    BayerOrder.GRBG: ((0, 1), (1, 1), (0, 0), (1, 0)),  # GRBG
-}

@@ -3,7 +3,7 @@ import ctypes
 
 import numpy as np
 
-from .constants import PiCameraVersion, BayerOrder, BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES
+from .constants import PiCameraVersion, BayerOrder
 from .resolution import PiResolution
 
 
@@ -31,6 +31,14 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
 
     # Prepare an empty 3D array that has the same 2D dimensions as the bayer array
     array_3d = np.zeros(bayer_array.shape + (3,), dtype=bayer_array.dtype)
+
+    BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES = {
+        # (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
+        BayerOrder.RGGB: ((0, 0), (1, 0), (0, 1), (1, 1)),
+        BayerOrder.GBRG: ((1, 0), (0, 0), (1, 1), (0, 1)),
+        BayerOrder.BGGR: ((1, 1), (0, 1), (1, 0), (0, 0)),
+        BayerOrder.GRBG: ((0, 1), (1, 1), (0, 0), (1, 0)),
+    }
 
     (
         (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
