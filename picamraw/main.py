@@ -159,13 +159,16 @@ def _pixel_bytes_to_array(pixel_bytes, header):
         contains the high 8-bits of 4 values followed by the low 2-bits of 4 values packed into the fifth byte
     '''
     # Reshape and crop the data. The crop's width is multiplied by 5/4 to deal with the packed 10-bit format;
-    # the shape's width is calculated in a similar fashion but with padding included (which involves
-    # several additional padding steps)
+    # the shape's width is calculated in a similar fashion but with padding included
     crop = PiResolution(
         header.width * 5 // 4,
         header.height
     )
 
+    # Honestly I don't entirely grok this code - it seems to imply that the raw data comes with extra (random?)
+    # bytes that form padding along the right and bottom edges of the image. To get the actual image data, this padding
+    # must be accounted for when reshaping the 1D array of bytes into a 2D array, and then discarded by cropping to the
+    # actual image resolution.
     shape = PiResolution(
         (((header.width + header.padding_right) * 5) + 3) // 4,
         (header.height + header.padding_down)
@@ -173,16 +176,32 @@ def _pixel_bytes_to_array(pixel_bytes, header):
 
     pixel_bytes_2d = pixel_bytes.reshape((shape.height, shape.width))[:crop.height, :crop.width]
 
-    # Unpack 10-bit values; every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of
-    # 4 values packed into the fifth byte
+    array = _unpack_10bit_values(pixel_bytes_2d)
 
+    return array
+
+
+def _unpack_10bit_values(pixel_bytes_2d):
+    ''' Unpack 10-bit values; every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of
+        4 values packed into the fifth byte
+    '''
+    # This code assumes that bytes in each row come in sets of 5. If the width is not a multiple of 5, it breaks
+    width_is_multiple_of_5 = pixel_bytes_2d.shape[1] % 5 == 0
+    if not width_is_multiple_of_5:
+        raise ValueError('Incoming data is the wrong shape: width is not a multiple of 5')
+
+    # Bitshift left by two to make room for the low 2-bits
     data = pixel_bytes_2d.astype(np.uint16) << 2
+
+    # In each row, split up every 5th byte and unpack it into the low 2-bits of the four preceding bytes
     for byte in range(4):
         data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 3)
 
+    # Set up a new array with the correct shape: same height but width reduced by 4/5
     array = np.zeros(
         (data.shape[0], data.shape[1] * 4 // 5), dtype=np.uint16)
 
+    # Copy over the properly-unpacked four out of every five bytes
     for i in range(4):
         array[:, i::4] = data[:, i::5]
 
