@@ -23,7 +23,7 @@ class PiRawBayer:
                 See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
                 on sensor_modes.
         '''
-
+        print('am I running')
         bayer_array, bayer_order = extract_raw_from_jpeg(filepath, camera_version, sensor_mode)
         self.bayer_array = bayer_array
         self.bayer_order = bayer_order
@@ -210,7 +210,7 @@ def _unpack_10bit_values(pixel_bytes_2d):
 
 # Size of the block of the raw bayer data (in bytes) within the full JPEG+RAW file
 RAW_BLOCK_SIZE_BY_VERSION_AND_MODE = {
-    PiCameraVersion.V1.value: {
+    PiCameraVersion.V1: {
         0: 6404096,
         1: 2717696,
         2: 6404096,
@@ -220,7 +220,7 @@ RAW_BLOCK_SIZE_BY_VERSION_AND_MODE = {
         6: 445440,
         7: 445440,
     },
-    PiCameraVersion.V2.value: {
+    PiCameraVersion.V2: {
         0: 10270208,
         1: 2678784,
         2: 10270208,

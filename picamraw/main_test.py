@@ -40,7 +40,7 @@ class TestGetRawBayerBytes:
 
 class TestGetRawBlockSize:
     @pytest.mark.parametrize('camera_version,sensor_mode', [
-        (camera_version_enum.value, sensor_mode)
+        (camera_version_enum, sensor_mode)
         for camera_version_enum in PiCameraVersion
         for sensor_mode in range(0, 8)
     ])
@@ -52,7 +52,7 @@ class TestGetRawBlockSize:
 class TestExtractRawFromJpeg:
     bayer_array, bayer_order = module.extract_raw_from_jpeg(
         filepath=picamv2_jpeg_path,
-        camera_version=PiCameraVersion.V2.value,
+        camera_version=PiCameraVersion.V2,
         sensor_mode=0
     )
 
@@ -183,7 +183,7 @@ class TestPixelBytesToArray:
 class TestPiRawBayer:
     raw_bayer = module.PiRawBayer(
         filepath=picamv2_jpeg_path,
-        camera_version=PiCameraVersion.V2.value,
+        camera_version=PiCameraVersion.V2,
         sensor_mode=0
     )
 
