@@ -23,7 +23,6 @@ class PiRawBayer:
                 See https://picamera.readthedocs.io/en/release-1.13/fov.html#sensor-modes for more information
                 on sensor_modes.
         '''
-        print('am I running')
         bayer_array, bayer_order = extract_raw_from_jpeg(filepath, camera_version, sensor_mode)
         self.bayer_array = bayer_array
         self.bayer_order = bayer_order
@@ -32,7 +31,8 @@ class PiRawBayer:
         return bayer_array_to_3d(self.bayer_array, self.bayer_order)
 
     def to_rgb(self):
-        # TODO: collapse 2x2 into single pixel, averaging green channel
+        # TODO: https://app.asana.com/0/819671808102776/917988531858818
+        # collapse 2x2 into single pixel, averaging green channel
         pass
 
 
@@ -78,16 +78,13 @@ def extract_raw_from_jpeg(filepath, camera_version, sensor_mode):
         bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
     '''
 
-    # Using mode='rb' opens the file data as bytes
     with open(filepath, mode='rb') as file:
         jpeg_data_as_bytes = file.read()
 
     raw_bytes = _get_raw_bayer_bytes(jpeg_data_as_bytes, camera_version, sensor_mode)
 
     # Extract header (metadata) and pixel data using known byte offsets
-    header = BroadcomRawHeader.from_buffer_copy(
-        raw_bytes[HEADER_BYTE_OFFSET:HEADER_BYTE_OFFSET + ctypes.sizeof(BroadcomRawHeader)]
-    )
+    header = BroadcomRawHeader.from_buffer_copy(raw_bytes, HEADER_BYTE_OFFSET)
 
     # Extract the 1D array of 8-bit (1-byte) values that collectively represent the pixel data
     # Note: pixel data is actually 10-bits per pixel, but is packed into 8-bit values

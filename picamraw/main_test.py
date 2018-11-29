@@ -163,16 +163,17 @@ class TestPixelBytesToArray:
 
         # Build up an array of length 512 to make it reshapeable into the default minimum 32x16 padded shape
 
-        # This group of five bytes should unpack to [9, 9, 9, 9]:
-        # 85 is 01010101, 2 is 00000010. All the 2's will get "01" added as low bits, ending as 0000001001, which is 9
-        five_byte_group = [2, 2, 2, 2, 85]
+        # This group of five bytes unpacks to [0b1001, 0b1001, 0b1001, 0b1001]:
+        # all the "0b10"s get "01" added as low bits, ending as "0b1001"
+        five_byte_group = [0b10, 0b10, 0b10, 0b10, 0b01010101]
+        expected_output_byte = 0b1001
         # It takes 4 such sets of 5 bytes to unpack to 16 pixels of data
         # The remaining 12 bytes are padding (to get the minimum width of 32) that will be cropped
         mock_32_byte_row = five_byte_group * 4 + [0] * 12
         mock_1D_pixel_array = np.array(mock_32_byte_row * 16, dtype=np.uint8)
 
         # After unpacking, I expect all values in the array to be "9"
-        expected = np.ones((16, 16), dtype=np.uint16) * 9
+        expected = np.ones((16, 16), dtype=np.uint16) * expected_output_byte
 
         actual = module._pixel_bytes_to_array(mock_1D_pixel_array, mock_header)
 
@@ -181,28 +182,21 @@ class TestPixelBytesToArray:
 
 # Integration test using a known image
 class TestPiRawBayer:
-    raw_bayer = module.PiRawBayer(
-        filepath=picamv2_jpeg_path,
-        camera_version=PiCameraVersion.V2,
-        sensor_mode=0
-    )
-
-    def test_extracts_bayer_order(self):
-        assert self.raw_bayer.bayer_order == BayerOrder.BGGR
-
     def test_extracts_raw_data(self):
+        raw_bayer = module.PiRawBayer(
+            filepath=picamv2_jpeg_path,
+            camera_version=PiCameraVersion.V2,
+            sensor_mode=0
+        )
+
+        assert raw_bayer.bayer_order == BayerOrder.BGGR
+
         # Spot-check some known pixels
-        assert self.raw_bayer.bayer_array[0][0] == 88
-        assert self.raw_bayer.bayer_array[-1][-1] == 65
+        assert raw_bayer.bayer_array[0][0] == 88
+        assert raw_bayer.bayer_array[-1][-1] == 65
 
         # Compare to full np array
-        actual = self.raw_bayer.bayer_array
+        actual = raw_bayer.bayer_array
         expected = np.load(picamv2_BGGR_bayer_array_path)
-
-        np.testing.assert_array_equal(actual, expected)
-
-    def test_to_3d(self):
-        actual = self.raw_bayer.to_3d()
-        expected = np.load(picamv2_3d_path)
 
         np.testing.assert_array_equal(actual, expected)
