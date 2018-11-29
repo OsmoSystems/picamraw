@@ -1,4 +1,4 @@
-This library was forked from the [PiCamera](https://github.com/waveform80/picamera) package and heavily modified using [this gist](https://gist.github.com/rwb27/c2ea3afb204a634f9f21a99bd8dd1541) as inspiration.
+This library was forked from the [PiCamera](https://github.com/waveform80/picamera) package.
 
 
 # Original PiCamera BSD License:
