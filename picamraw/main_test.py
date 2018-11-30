@@ -10,6 +10,7 @@ from . import main as module
 picamv2_jpeg_path = pkg_resources.resource_filename(__name__, 'test_fixtures/picamv2.jpeg')
 picamv2_BGGR_bayer_array_path = pkg_resources.resource_filename(__name__, 'test_fixtures/picamv2_BGGR_bayer_array.npy')
 picamv2_3d_path = pkg_resources.resource_filename(__name__, 'test_fixtures/picamv2_3d.npy')
+picamv2_rgb_path = pkg_resources.resource_filename(__name__, 'test_fixtures/picamv2_rgb.npy')
 
 
 class TestGetRawBayerBytes:
@@ -109,6 +110,47 @@ class TestBayerArrayTo3D:
         np.testing.assert_array_equal(actual, expected)
 
 
+class TestBayerArrayToRGB:
+    @pytest.mark.parametrize('bayer_order,expected', [
+        (BayerOrder.RGGB, np.array([
+            [[1, 2.5, 5]],
+        ])),
+        (BayerOrder.GBRG, np.array([
+            [[3, 3, 2]],
+        ])),
+        (BayerOrder.BGGR, np.array([
+            [[5, 2.5, 1]],
+        ])),
+        (BayerOrder.GRBG, np.array([
+            [[2, 3, 3]],
+        ])),
+    ])
+    def test_splits_to_rgb_using_bayer_order(self, bayer_order, expected):
+        bayer_array = np.array([
+            [1, 2],
+            [3, 5],
+        ])
+        actual = module.bayer_array_to_rgb(bayer_array, bayer_order)
+
+        np.testing.assert_array_equal(actual, expected)
+
+    def test_uneven_shape_raises(self):
+        bayer_array = np.array([
+            [1, 2, 3],
+            [4, 5, 6],
+        ])
+        with pytest.raises(ValueError):
+            module.bayer_array_to_rgb(bayer_array, BayerOrder.RGGB)
+
+    def test_integration(self):
+        bayer_array = np.load(picamv2_BGGR_bayer_array_path)
+        actual = module.bayer_array_to_rgb(bayer_array, BayerOrder.BGGR)
+
+        expected = np.load(picamv2_rgb_path)
+
+        np.testing.assert_array_equal(actual, expected)
+
+
 class TestUnpack10BitValues:
     ''' Every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of 4 values packed into 5th byte
 
@@ -200,3 +242,25 @@ class TestPiRawBayer:
         expected = np.load(picamv2_BGGR_bayer_array_path)
 
         np.testing.assert_array_equal(actual, expected)
+
+    def test_rgb_array_property(self, mocker):
+        mocker.patch.object(module, 'bayer_array_to_rgb').return_value = sentinel.rgb_array
+
+        raw_bayer = module.PiRawBayer(
+            filepath=picamv2_jpeg_path,
+            camera_version=PiCameraVersion.V2,
+            sensor_mode=0
+        )
+
+        assert raw_bayer.rgb_array == sentinel.rgb_array
+
+    def test_array_3d_property(self, mocker):
+        mocker.patch.object(module, 'bayer_array_to_3d').return_value = sentinel.array_3d
+
+        raw_bayer = module.PiRawBayer(
+            filepath=picamv2_jpeg_path,
+            camera_version=PiCameraVersion.V2,
+            sensor_mode=0
+        )
+
+        assert raw_bayer.array_3d == sentinel.array_3d
