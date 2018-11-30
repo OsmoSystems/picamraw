@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 from setuptools import find_packages, setup
 
 
@@ -6,9 +7,11 @@ with open('README.md', 'r') as fh:
     long_description = fh.read()
 
 
+patch_version = os.environ.get('PATCH_VERSION', '0')
+
 setup(
     name='picamraw',
-    version='1.0.0',
+    version=f'1.0.{patch_version}',
     author='Osmo Systems',
     author_email='dev@osmobot.com',
     description='Library for extracting raw bayer data from a Raspberry Pi JPEG+RAW file',

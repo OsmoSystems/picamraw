@@ -6,7 +6,7 @@ version: 2
 
 
 jobs:
-  build:
+  test:
     docker:
       - image: python:3.6
 
@@ -22,3 +22,46 @@ jobs:
           name: tox -r to install and run tests and flake
           command: |
             tox -r
+
+  publish:
+    docker:
+      - image: python:3.6
+    steps:
+      - checkout
+      - run:
+          name: set PyPI creds in .pypirc
+          command: |
+            echo -e "[pypi]" >> ~/.pypirc
+            echo -e "username = OsmoSystems" >> ~/.pypirc
+            echo -e "password = $PYPI_PASSWORD" >> ~/.pypirc
+      - run:
+          name: upgrade build tooling
+          command: pip install --upgrade setuptools wheel twine
+      - run:
+          name: build package
+          command: |
+            PATCH_VERSION=$CIRCLE_BUILD_NUM
+            python setup.py bdist_wheel
+      - run:
+          name: publish
+          command: twine upload dist/*
+
+workflows:
+  version: 2
+  test_and_publish:
+    jobs:
+      - test
+      - approve_publish:
+          type: approval
+          requires:
+            - test
+          filters:
+            branches:
+              only: master
+      - publish:
+          context: pypi
+          requires:
+            - approve_publish
+          filters:
+            branches:
+              only: master
