@@ -27,20 +27,20 @@ class PiRawBayer:
         self.bayer_array = bayer_array
         self.bayer_order = bayer_order
 
-    @property
-    def array_3d(self):
-        ''' A 16-bit 3D numpy array. This array has the same 2D dimensions as the input `bayer_array`, but pulls each pixel
-            out into either the R, G, or B channel in the 3rd dimension. Thus, each "pixel" in the output array will be
-            [R, G, B] where 2 of R, G, and B are 0 and the other contains a value from bayer_array.
+    def to_3d(self):
+        '''
+        Returns: A 16-bit 3D numpy array. This array has the same 2D dimensions as the input `bayer_array`, but pulls
+            each pixel out into either the R, G, or B channel in the 3rd dimension. Thus, each "pixel" in the output
+            array will be [R, G, B] where 2 of R, G, and B are 0 and the other contains a value from bayer_array.
             It determines whether a given pixel is R, G, or B using the provided `bayer_order`.
         '''
         return bayer_array_to_3d(self.bayer_array, self.bayer_order)
 
-    @property
-    def rgb_array(self):
-        ''' A 16-bit 3D numpy array. Every 2x2 containing R, G1, G2, B in the original array is collapsed into a single
-            [R, (G1+G2)/2, B] pixel. Thus, this array is 1/4 the size of the input `bayer_array` - both width and height
-            are halved.
+    def to_rgb(self):
+        '''
+        Returns: A 16-bit 3D numpy array. Every 2x2 containing R, G1, G2, B in the original array is collapsed into a
+            single [R, (G1+G2)/2, B] pixel. Thus, this array is 1/4 the size of the input `bayer_array` - both width and
+            height are halved.
         '''
         return bayer_array_to_rgb(self.bayer_array, self.bayer_order)
 
@@ -120,14 +120,14 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
         It determines whether a given pixel is R, G, or B using the provided `bayer_order`.
 
     Example:
-        bayer_array_to_3d(
+        >>> bayer_array_to_3d(
             bayer_array=np.array([
                 [1, 2],
                 [3, 4],
             ]),
             bayer_order=BayerOrder.RGGB
         )
-        >>> np.array([
+        np.array([
             [[1, 0, 0], [0, 2, 0]],
             [[0, 3, 0], [0, 0, 4]],
         ])

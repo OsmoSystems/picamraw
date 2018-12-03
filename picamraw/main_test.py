@@ -252,7 +252,7 @@ class TestPiRawBayer:
             sensor_mode=0
         )
 
-        assert raw_bayer.rgb_array == sentinel.rgb_array
+        assert raw_bayer.to_rgb() == sentinel.rgb_array
 
     def test_array_3d_property(self, mocker):
         mocker.patch.object(module, 'bayer_array_to_3d').return_value = sentinel.array_3d
@@ -263,4 +263,4 @@ class TestPiRawBayer:
             sensor_mode=0
         )
 
-        assert raw_bayer.array_3d == sentinel.array_3d
+        assert raw_bayer.to_3d() == sentinel.array_3d
