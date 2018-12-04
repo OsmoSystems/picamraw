@@ -1,6 +1,8 @@
 # picamraw
 Library for extracting raw bayer data from a Raspberry Pi JPEG+RAW file.
 
+Installable from [PyPI](https://pypi.org/project/picamraw/); usable without camera hardware present.
+
 
 # Usage example
 ## Extract raw bayer array
