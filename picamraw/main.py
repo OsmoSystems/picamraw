@@ -2,7 +2,7 @@ import ctypes
 
 import numpy as np
 
-from .constants import PiCameraVersion, BayerOrder
+from .constants import PiCameraVersion, BayerOrder, BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES
 from .resolution import PiResolution
 
 
@@ -28,12 +28,21 @@ class PiRawBayer:
         self.bayer_order = bayer_order
 
     def to_3d(self):
+        '''
+        Returns: A 16-bit 3D numpy array. This array has the same 2D dimensions as the input `bayer_array`, but pulls
+            each pixel out into either the R, G, or B channel in the 3rd dimension. Thus, each "pixel" in the output
+            array will be [R, G, B] where 2 of R, G, and B are 0 and the other contains a value from bayer_array.
+            It determines whether a given pixel is R, G, or B using the provided `bayer_order`.
+        '''
         return bayer_array_to_3d(self.bayer_array, self.bayer_order)
 
     def to_rgb(self):
-        # TODO: https://app.asana.com/0/819671808102776/917988531858818
-        # collapse 2x2 into single pixel, averaging green channel
-        pass
+        '''
+        Returns: A 16-bit 3D numpy array. Every 2x2 containing R, G1, G2, B in the original array is collapsed into a
+            single [R, (G1+G2)/2, B] pixel. Thus, this array is 1/4 the size of the input `bayer_array` - both width and
+            height are halved.
+        '''
+        return bayer_array_to_rgb(self.bayer_array, self.bayer_order)
 
 
 BROADCOM_BAYER_ORDER_TO_ENUM = {
@@ -96,8 +105,15 @@ def extract_raw_from_jpeg(filepath, camera_version, sensor_mode):
     return bayer_array, bayer_order
 
 
+def _guard_attribute_is_a_multiple_of(attribute_name, attribute_value, multiple):
+    if not attribute_value % multiple == 0:
+        raise ValueError(
+            f'Incoming data is the wrong shape: {attribute_name} ({attribute_value}) is not a multiple of {multiple}'
+        )
+
+
 def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
-    ''' Convert the 2D `bayer_array` attribute to a 3D RGB array, in which each value in the original 2D array is
+    ''' Convert the 2D `bayer_array` to a 3D RGB array, in which each value in the original 2D array is
         moved to one of the three R,G, or B channels.
 
     Args:
@@ -127,17 +143,7 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     # Prepare an empty 3D array that has the same 2D dimensions as the bayer array
     array_3d = np.zeros(bayer_array.shape + (3,), dtype=bayer_array.dtype)
 
-    BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES = {
-        # (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
-        BayerOrder.RGGB: ((0, 0), (1, 0), (0, 1), (1, 1)),
-        BayerOrder.GBRG: ((1, 0), (0, 0), (1, 1), (0, 1)),
-        BayerOrder.BGGR: ((1, 1), (0, 1), (1, 0), (0, 0)),
-        BayerOrder.GRBG: ((0, 1), (1, 1), (0, 0), (1, 0)),
-    }
-
-    (
-        (ry, rx), (gy, gx), (Gy, Gx), (by, bx)
-    ) = BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES[bayer_order]
+    ((ry, rx), (gy, gx), (Gy, Gx), (by, bx)) = BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES[bayer_order]
 
     # Keeps pixels in the same 2D location, but separates into RGB channels based on bayer order
     # Increment by 2: a given color will be in every other column in every other row in the bayer array
@@ -149,6 +155,52 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     array_3d[by::2, bx::2, B_CHANNEL_INDEX] = bayer_array[by::2, bx::2]  # Blue
 
     return array_3d
+
+
+def bayer_array_to_rgb(bayer_array, bayer_order: BayerOrder):
+    ''' Convert the 2D `bayer_array` to a 3D RGB array, in which each value in the original 2D array is
+        moved to one of the three R,G, or B channels.
+
+    Args:
+        bayer_array: the 2D bayer array to convert
+        bayer_order: A `BayerOrder` enum that indicates the bayer pattern used by the `bayer_array`
+
+    Returns:
+        A 3D numpy array. Every 2x2 containing R, G1, G2, B in the original array is collapsed into a single
+        [R, (G1+G2)/2, B] pixel. Thus, this array is 1/4 the size of the input `bayer_array` - both width and height
+        are halved.
+
+    Example:
+        bayer_array_to_rgb(
+            bayer_array=np.array([
+                [1, 2],  # R  G1
+                [3, 4],  # G2 B
+            ]),
+            bayer_order=BayerOrder.RGGB
+        )
+        >>> np.array([
+            [[1, 2.5, 4]],  # R, (G1+G2)/2, B
+        ])
+    '''
+    # Initialize a new array that is the expected shape of 1/2 width and height dimensions
+    original_height = bayer_array.shape[0]
+    original_width = bayer_array.shape[1]
+
+    _guard_attribute_is_a_multiple_of('width', original_width, 2)
+    _guard_attribute_is_a_multiple_of('height', original_height, 2)
+
+    rgb_array = np.zeros((int(original_height/2), int(original_width/2), 3))
+
+    ((ry, rx), (gy, gx), (Gy, Gx), (by, bx)) = BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES[bayer_order]
+
+    # Increment by 2: a given color will be in every other column in every other row in the bayer array
+    # "Seed" this incrementating using the (x,y) coordinates of that color in the first 2x2 corner of the array
+    R_CHANNEL_INDEX, G_CHANNEL_INDEX, B_CHANNEL_INDEX = [0, 1, 2]
+    rgb_array[:, :, R_CHANNEL_INDEX] = bayer_array[ry::2, rx::2]
+    rgb_array[:, :, G_CHANNEL_INDEX] = (bayer_array[gy::2, gx::2] + bayer_array[Gy::2, Gx::2])/2
+    rgb_array[:, :, B_CHANNEL_INDEX] = bayer_array[by::2, bx::2]
+
+    return rgb_array
 
 
 def _pixel_bytes_to_array(pixel_bytes, header):
@@ -183,9 +235,8 @@ def _unpack_10bit_values(pixel_bytes_2d):
         4 values packed into the fifth byte
     '''
     # This code assumes that bytes in each row come in sets of 5. If the width is not a multiple of 5, it breaks
-    width_is_multiple_of_5 = pixel_bytes_2d.shape[1] % 5 == 0
-    if not width_is_multiple_of_5:
-        raise ValueError('Incoming data is the wrong shape: width is not a multiple of 5')
+    width = pixel_bytes_2d.shape[1]
+    _guard_attribute_is_a_multiple_of('width', width, 5)
 
     # Bitshift left by two to make room for the low 2-bits
     data = pixel_bytes_2d.astype(np.uint16) << 2
