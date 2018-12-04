@@ -8,7 +8,7 @@ Library for extracting raw bayer data from a Raspberry Pi JPEG+RAW file.
 from picamraw import PiRawBayer, PiCameraVersion
 
 raw_bayer = PiRawBayer(
-    filepath='path/to/image.jpeg',
+    filepath='path/to/image.jpeg', # Most likely an image captured using raspistill with the "--raw" flag
     camera_version=PiCameraVersion.V2,
     sensor_mode=0
 )
