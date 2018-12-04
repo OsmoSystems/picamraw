@@ -105,6 +105,13 @@ def extract_raw_from_jpeg(filepath, camera_version, sensor_mode):
     return bayer_array, bayer_order
 
 
+def _guard_attribute_is_a_multiple_of(attribute_name, attribute_value, multiple):
+    if not attribute_value % multiple == 0:
+        raise ValueError(
+            f'Incoming data is the wrong shape: {attribute_name} ({attribute_value}) is not a multiple of {multiple}'
+        )
+
+
 def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
     ''' Convert the 2D `bayer_array` to a 3D RGB array, in which each value in the original 2D array is
         moved to one of the three R,G, or B channels.
@@ -178,6 +185,10 @@ def bayer_array_to_rgb(bayer_array, bayer_order: BayerOrder):
     # Initialize a new array that is the expected shape of 1/2 width and height dimensions
     original_height = bayer_array.shape[0]
     original_width = bayer_array.shape[1]
+
+    _guard_attribute_is_a_multiple_of('width', original_width, 2)
+    _guard_attribute_is_a_multiple_of('height', original_height, 2)
+
     rgb_array = np.zeros((int(original_height/2), int(original_width/2), 3))
 
     ((ry, rx), (gy, gx), (Gy, Gx), (by, bx)) = BAYER_ORDER_TO_RGB_CHANNEL_COORDINATES[bayer_order]
@@ -224,9 +235,8 @@ def _unpack_10bit_values(pixel_bytes_2d):
         4 values packed into the fifth byte
     '''
     # This code assumes that bytes in each row come in sets of 5. If the width is not a multiple of 5, it breaks
-    width_is_multiple_of_5 = pixel_bytes_2d.shape[1] % 5 == 0
-    if not width_is_multiple_of_5:
-        raise ValueError('Incoming data is the wrong shape: width is not a multiple of 5')
+    width = pixel_bytes_2d.shape[1]
+    _guard_attribute_is_a_multiple_of('width', width, 5)
 
     # Bitshift left by two to make room for the low 2-bits
     data = pixel_bytes_2d.astype(np.uint16) << 2

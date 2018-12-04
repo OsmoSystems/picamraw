@@ -14,6 +14,8 @@ raw_bayer = PiRawBayer(
 )
 raw_bayer.bayer_array   # A 16-bit 2D numpy array of the bayer data
 raw_bayer.bayer_order   # A `BayerOrder` enum that describes the arrangement of the R,G,G,B pixels in the bayer_array
+raw_bayer.to_rgb()      # A 16-bit 3D numpy array of bayer data collapsed into RGB channels (see docstring for details).
+raw_bayer.to_3d()       # A 16-bit 3D numpy array of bayer data split into RGB channels (see docstring for details).
 ```
 
 

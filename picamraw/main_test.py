@@ -139,7 +139,10 @@ class TestBayerArrayToRGB:
             [1, 2, 3],
             [4, 5, 6],
         ])
-        with pytest.raises(ValueError):
+
+        # pytest uses regex to match error messages
+        expected_error_message = r'Incoming data is the wrong shape: width \(3\) is not a multiple of 2'
+        with pytest.raises(ValueError, match=expected_error_message):
             module.bayer_array_to_rgb(bayer_array, BayerOrder.RGGB)
 
     def test_integration(self):
@@ -189,7 +192,9 @@ class TestUnpack10BitValues:
         module._unpack_10bit_values(mock_pixel_bytes_2d)
 
     def test_unpack_10bit_values__incorrect_shape_raises(self):
-        with pytest.raises(Exception):
+        # pytest uses regex to match error messages
+        expected_error_message = r'Incoming data is the wrong shape: width \(26\) is not a multiple of 5'
+        with pytest.raises(ValueError, match=expected_error_message):
             mock_pixel_bytes_2d = np.zeros((10, 26))
             module._unpack_10bit_values(mock_pixel_bytes_2d)
 
