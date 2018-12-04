@@ -120,14 +120,14 @@ def bayer_array_to_3d(bayer_array, bayer_order: BayerOrder):
         It determines whether a given pixel is R, G, or B using the provided `bayer_order`.
 
     Example:
-        >>> bayer_array_to_3d(
+        bayer_array_to_3d(
             bayer_array=np.array([
                 [1, 2],
                 [3, 4],
             ]),
             bayer_order=BayerOrder.RGGB
         )
-        np.array([
+        >>> np.array([
             [[1, 0, 0], [0, 2, 0]],
             [[0, 3, 0], [0, 0, 4]],
         ])
