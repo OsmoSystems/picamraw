@@ -10,7 +10,7 @@ Installable from [PyPI](https://pypi.org/project/picamraw/); usable without came
 from picamraw import PiRawBayer, PiCameraVersion
 
 raw_bayer = PiRawBayer(
-    filepath='path/to/image.jpeg',  # A JPEG+RAW file, e.g. an image captured using raspistill with the “--raw” flag
+    filepath='path/to/image.jpeg',  # A JPEG+RAW file, e.g. an image captured using raspistill with the "--raw" flag
     camera_version=PiCameraVersion.V2,
     sensor_mode=0
 )
