@@ -6,27 +6,24 @@ version: 2
 
 
 jobs:
-  test:
+  test35:
     docker:
-      - image: python:3.6
-
-    steps:
+      - image: python:3.5
+    steps: &test_steps
       - checkout
-
       - run:
           name: install tox
           command: |
             pip install tox
-
       - run:
           name: tox -r to install and run tests and flake
           command: |
-            tox -r
+            tox -r --skip-missing-interpreters
 
-  publish:
+  publish35:
     docker:
-      - image: python:3.6
-    steps:
+      - image: python:3.5
+    steps: &publish_steps
       - checkout
       - run:
           name: set PyPI creds in .pypirc
@@ -46,11 +43,22 @@ jobs:
           name: publish
           command: twine upload dist/*
 
+  test36:
+    docker:
+      - image: python:3.6
+    steps: *test_steps
+
+  publish36:
+    docker:
+      - image: python:3.6
+    steps: *publish_steps
+
 workflows:
   version: 2
   test_and_publish:
     jobs:
-      - test
+      - test35
+      - test36
       - approve_publish:
           type: approval
           requires:
@@ -58,10 +66,11 @@ workflows:
           filters:
             branches:
               only: master
-      - publish:
+      - publish35:
           context: pypi
           requires:
             - approve_publish
-          filters:
-            branches:
-              only: master
+      - publish36:
+          context: pypi
+          requires:
+            - approve_publish

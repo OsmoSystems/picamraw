@@ -19,7 +19,7 @@ setup(
     long_description_content_type='text/markdown',
     url='https://www.github.com/osmosystems/picamraw',
     packages=find_packages(),
-    python_requires='~=3.6',
+    python_requires='~=3.5',
     install_requires=[
         'numpy',
     ],
