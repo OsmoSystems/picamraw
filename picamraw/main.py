@@ -108,7 +108,8 @@ def extract_raw_from_jpeg(filepath, camera_version, sensor_mode):
 def _guard_attribute_is_a_multiple_of(attribute_name, attribute_value, multiple):
     if not attribute_value % multiple == 0:
         raise ValueError(
-            f'Incoming data is the wrong shape: {attribute_name} ({attribute_value}) is not a multiple of {multiple}'
+            'Incoming data is the wrong shape: {attribute_name} ({attribute_value}) is not a multiple of {multiple}'
+            .format(**locals())
         )
 
 
