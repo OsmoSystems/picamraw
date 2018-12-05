@@ -9,16 +9,14 @@ jobs:
   test35:
     docker:
       - image: python:3.5
-    steps: &test_steps
+    steps:
       - checkout
       - run:
           name: install tox
-          command: |
-            pip install tox
+          command: pip install tox
       - run:
-          name: tox -r to install and run tests and flake
-          command: |
-            tox -r --skip-missing-interpreters
+          name: tox -r to install and run tests and flake (python 3.5 only)
+          command: tox -r -e py35
 
   publish35:
     docker:
@@ -46,7 +44,14 @@ jobs:
   test36:
     docker:
       - image: python:3.6
-    steps: *test_steps
+    steps:
+      - checkout
+      - run:
+          name: install tox
+          command:             pip install tox
+      - run:
+          name: tox -r to install and run tests and flake (python 3.6 only)
+          command: tox -r -e py36
 
   publish36:
     docker:
