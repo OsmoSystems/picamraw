@@ -48,7 +48,7 @@ jobs:
       - checkout
       - run:
           name: install tox
-          command:             pip install tox
+          command: pip install tox
       - run:
           name: tox -r to install and run tests and flake (python 3.6 only)
           command: tox -r -e py36
