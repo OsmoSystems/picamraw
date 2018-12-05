@@ -62,7 +62,8 @@ workflows:
       - approve_publish:
           type: approval
           requires:
-            - test
+            - test35
+            - test36
           filters:
             branches:
               only: master
