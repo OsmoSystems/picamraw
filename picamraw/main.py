@@ -244,7 +244,13 @@ def _unpack_10bit_values(pixel_bytes_2d):
 
     # In each row, split up every 5th byte and unpack it into the low 2-bits of the four preceding bytes
     for byte in range(4):
-        data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 3)
+        fifth_bytes = pixel_bytes_2d[:, 4::5]
+        # Shift the bits over so that the relevant ones are in the rightmost (lowest) position
+        # eg. for byte 1, 0b00001100 -> 0b11
+        shifted_bits_from_fifth_bytes = fifth_bytes >> (byte * 2)
+        # Mask the relevant ones (the lowest 2)
+        masked_low_bits = shifted_bits_from_fifth_bytes & 0b11
+        data[:, byte::5] |= masked_low_bits
 
     # Set up a new array with the correct shape: same height but width reduced by 4/5
     array = np.zeros(

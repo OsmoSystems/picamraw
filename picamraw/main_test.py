@@ -62,7 +62,7 @@ class TestExtractRawFromJpeg:
 
     def test_extracts_raw_data(self):
         # Spot-check some known pixels
-        assert self.bayer_array[0][0] == 88
+        assert self.bayer_array[0][0] == 91
         assert self.bayer_array[-1][-1] == 65
 
         # Compare to full np array
@@ -160,11 +160,11 @@ class TestUnpack10BitValues:
     Thus, for an array that contains these integers:
         [1, 2, 3, 4, 5]
     Represented as bytes (8-bits) in binary:
-        [0000001, 0000010, 0000011, 0000100, 0000101]
+        [0b0000001, 0b0000010, 0b0000011, 0b0000100, 0b0000101]
     Unpack 5th byte as low 2-bits:
-        [000000100, 000001000, 000001101, 000010001]
+        [0b000000101, 0b000001001, 0b000001100, 0b000010000]
     Convert back to integers:
-        [4, 8, 13, 17]
+        [5, 9, 12, 16]
     '''
     def test_unpack_10bit_values(self):
         mock_pixel_bytes_2d = np.array(
@@ -177,8 +177,8 @@ class TestUnpack10BitValues:
 
         expected = np.array(
             [
-                [4, 8, 13, 17, 4, 8, 13, 17],
-                [4, 8, 13, 17, 4, 8, 13, 17],
+                [5, 9, 12, 16, 5, 9, 12, 16],
+                [5, 9, 12, 16, 5, 9, 12, 16],
             ],
             dtype=np.uint8,
         )
@@ -188,7 +188,7 @@ class TestUnpack10BitValues:
         np.testing.assert_array_equal(actual, expected)
 
     def test_unpack_10bit_values__correct_shape_doesnt_raise(self):
-        mock_pixel_bytes_2d = np.zeros((10, 25))
+        mock_pixel_bytes_2d = np.zeros((10, 25)).astype(np.uint8)
         module._unpack_10bit_values(mock_pixel_bytes_2d)
 
     def test_unpack_10bit_values__incorrect_shape_raises(self):
@@ -207,7 +207,6 @@ class TestPixelBytesToArray:
             padding_right=0,
             padding_down=0,
         )
-
         # Build up an array of length 512 to make it reshapeable into the default minimum 32x16 padded shape
 
         # This group of five bytes unpacks to [0b1001, 0b1001, 0b1001, 0b1001]:
@@ -239,7 +238,7 @@ class TestPiRawBayer:
         assert raw_bayer.bayer_order == BayerOrder.BGGR
 
         # Spot-check some known pixels
-        assert raw_bayer.bayer_array[0][0] == 88
+        assert raw_bayer.bayer_array[0][0] == 91
         assert raw_bayer.bayer_array[-1][-1] == 65
 
         # Compare to full np array
