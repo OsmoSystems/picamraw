@@ -155,32 +155,56 @@ class TestBayerArrayToRGB:
 
 
 class TestUnpack10BitValues:
-    ''' Every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of 4 values packed into 5th byte
-
-    Thus, for an array that contains these integers:
-        [1, 2, 3, 4, 5]
-    Represented as bytes (8-bits) in binary:
-        [0b0000001, 0b0000010, 0b0000011, 0b0000100, 0b0000101]
-    Unpack 5th byte as low 2-bits:
-        [0b000000101, 0b000001001, 0b000001100, 0b000010000]
-    Convert back to integers:
-        [5, 9, 12, 16]
-    '''
     def test_unpack_10bit_values(self):
+        # In the camera's RAW format, every 5 bytes in the source data contains the high 8-bits of
+        # 4 values followed by the low 2-bits of 4 values packed into 5th byte.
+        input_five_byte_set = [
+            # Note: In python, "0b" appears to the left of any binary value.
+            0b11111111,
+            0b10010010,
+            0b01001001,
+            0b00000000,
+            # Fifth byte is made up of the 2-bit sets that will be paired with the first 4 bytes
+            # In this case, from least to most significant, those 2-bit sets will be
+            # 0b00, 0b01, 0b10, 0b11
+            # Note: within a set of bits, the "most significant" is printed first
+            # (because our normal number system is big-endian)
+            # so the 2-bit sets listed above are right-to-left when we represent the 5th byte:
+            0b11100100
+        ]
+        # Those 5 bytes are converted to 10-bit values
+        # Each 10-bit output value will be made up of 8 bits from one of the first 4 input bytes
+        # and 2 bits from the 5th input byte.
+        # The spec at https://linuxtv.org/downloads/v4l-dvb-apis-new/uapi/v4l/pixfmt-srggb10p.html
+        # determines which bits end up where, but I'll also explain inline:
+        expected_ten_bit_outputs = [
+            # The rightmost (least significant) 2-bits of the fifth source byte (0b00 in this case)
+            # should end up as the low bits of the first input byte
+            0b1111111100,
+            # The second input byte gets the next 2 least significant bits (0b01) from the fifth byte
+            0b1001001001,
+            # The third byte gets the next 2 (0b10)
+            0b0100100110,
+            # And finally the fourth byte gets the leftmost, most-significant 2 bits (0b11)
+            0b0000000011,
+        ]
+
+        # In the image array, there are multiple sets of these bytes to unpack, in a 2-dimensional array
+        # Let's just do a basic job of simulating that by repeating the same values a few times.
         mock_pixel_bytes_2d = np.array(
             [
-                [1, 2, 3, 4, 5, 1, 2, 3, 4, 5],
-                [1, 2, 3, 4, 5, 1, 2, 3, 4, 5],
+                input_five_byte_set * 2,
+                input_five_byte_set * 2,
             ],
             dtype=np.uint8,
         )
 
         expected = np.array(
             [
-                [5, 9, 12, 16, 5, 9, 12, 16],
-                [5, 9, 12, 16, 5, 9, 12, 16],
+                expected_ten_bit_outputs * 2,
+                expected_ten_bit_outputs * 2,
             ],
-            dtype=np.uint8,
+            dtype=np.uint16,
         )
 
         actual = module._unpack_10bit_values(mock_pixel_bytes_2d)
