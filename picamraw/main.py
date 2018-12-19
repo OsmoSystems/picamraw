@@ -234,8 +234,8 @@ def _pixel_bytes_to_array(pixel_bytes, header):
 def _unpack_10bit_values(pixel_bytes_2d):
     ''' Unpack 10-bit values from 8-bit values.
         Every 5 bytes in the input data corresponds to 4 10-bit values in the output.
-        Those 5 bytes consist of the high 8 bits of 4 output values followed by the low 2 bits of
-        4 values packed into the fifth byte
+        The 5 input bytes consist of the high 8 bits of the 4 output values followed by the low 2 bits of
+        the output values packed into the fifth byte
 
         Args:
             pixel_bytes_2d: 2d numpy array where the 2nd dimension arrays are encoded per this spec:
