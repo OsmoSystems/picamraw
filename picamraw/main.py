@@ -255,7 +255,7 @@ def _unpack_10bit_values(pixel_bytes_2d):
             # Every 5 bytes in the input will be turned into 4 items in the output
             input_width * 4 // 5
         ),
-        # Actually 10 bit values, but uint16 is the closest numpy has to offer.
+         # This will be filled with 10 bit values, but uint16 is the closest numpy has to offer.
         dtype=np.uint16
     )
 
