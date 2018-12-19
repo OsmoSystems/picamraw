@@ -273,7 +273,7 @@ def _unpack_10bit_values(pixel_bytes_2d):
         high_bits = pixel_bytes_2d[:, byte_cohort_index::5].astype(np.uint16) << 2
 
         # Now process bits from cohort 4 and unpack the appropriate ones to be our low 2 bits:
-        # Shift the bits over so that the relevant ones are in the rightmost (lowest) position
+        # Shift the bits over so that the relevant ones are in the rightmost (lowest 2 bits) position
         # eg. for byte 1, 0b00001100 -> 0b11
         shifted_bits_from_cohort_4 = cohort_4 >> (byte_cohort_index * 2)
         # Mask the relevant ones (the lowest 2)
