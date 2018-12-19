@@ -232,29 +232,57 @@ def _pixel_bytes_to_array(pixel_bytes, header):
 
 
 def _unpack_10bit_values(pixel_bytes_2d):
-    ''' Unpack 10-bit values; every 5 bytes contains the high 8-bits of 4 values followed by the low 2-bits of
-        4 values packed into the fifth byte
+    ''' Unpack 10-bit values from 8-bit values.
+        Every 5 bytes in the input data corresponds to 4 10-bit values in the output.
+        The 5 input bytes consist of the high 8 bits of the 4 output values followed by the low 2 bits of
+        the output values packed into the fifth byte
+
+        Args:
+            pixel_bytes_2d: 2d numpy array where the 2nd dimension arrays are encoded per this spec:
+                https://linuxtv.org/downloads/v4l-dvb-apis-new/uapi/v4l/pixfmt-srggb10p.html
+        Returns:
+            2d numpy array containing 10-bit values unpacked from pixel_bytes_2d, stored with dtype np.uint16.
     '''
-    # This code assumes that bytes in each row come in sets of 5. If the width is not a multiple of 5, it breaks
-    width = pixel_bytes_2d.shape[1]
-    _guard_attribute_is_a_multiple_of('width', width, 5)
+    input_height, input_width = pixel_bytes_2d.shape
 
-    # Bitshift left by two to make room for the low 2-bits
-    data = pixel_bytes_2d.astype(np.uint16) << 2
+    # This code assumes that bytes in each row come in sets of 5. If the width is not a multiple of 5, it breaks.
+    _guard_attribute_is_a_multiple_of('width', input_width, 5)
 
-    # In each row, split up every 5th byte and unpack it into the low 2-bits of the four preceding bytes
-    for byte in range(4):
-        data[:, byte::5] |= ((data[:, 4::5] >> ((4 - byte) * 2)) & 3)
+    # Set up the output array with the correct shape: same height but width reduced by 4/5
+    output_data = np.zeros(
+        shape=(
+            input_height,
+            # Every 5 bytes in the input will be turned into 4 items in the output
+            input_width * 4 // 5
+        ),
+        # This will be filled with 10 bit values, but uint16 is the closest numpy has to offer.
+        dtype=np.uint16
+    )
 
-    # Set up a new array with the correct shape: same height but width reduced by 4/5
-    array = np.zeros(
-        (data.shape[0], data.shape[1] * 4 // 5), dtype=np.uint16)
+    # Method to populate the output array:
+    # In each 5-byte set, byte 0 gets the lowest bits from byte 4, byte 1 gets the next lowest bits from byte 4, etc.
+    # We can efficiently process all of the "byte 0"'s together, all of the "byte 1"'s together,
+    # and so on through the "byte 3"s.
+    # For lack of a better term, we'll call these the "byte cohorts" 0 through 3.
 
-    # Copy over the properly-unpacked four out of every five bytes
-    for i in range(4):
-        array[:, i::4] = data[:, i::5]
+    # First, set aside cohort 4: the bytes that will be unpacked into the low bits to go with the first 4 bytes
+    cohort_4 = pixel_bytes_2d[:, 4::5]
+    for byte_cohort_index in range(4):
+        # High bits come from the input array,
+        # shifted left by two bits to make room for the low 2-bits which will come from the 5th byte
+        high_bits = pixel_bytes_2d[:, byte_cohort_index::5].astype(np.uint16) << 2
 
-    return array
+        # Now process bits from cohort 4 and unpack the appropriate ones to be our low 2 bits:
+        # Shift the bits over so that the relevant ones are in the rightmost (lowest 2 bits) position
+        # eg. for byte 1, 0b00001100 -> 0b11
+        shifted_bits_from_cohort_4 = cohort_4 >> (byte_cohort_index * 2)
+        # Mask the relevant ones (the lowest 2)
+        masked_low_bits = shifted_bits_from_cohort_4 & 0b11
+
+        # Finally, put the masked low bits into their place in the output array
+        output_data[:, byte_cohort_index::4] = high_bits | masked_low_bits
+
+    return output_data
 
 
 # Size of the block of the raw bayer data (in bytes) within the full JPEG+RAW file
