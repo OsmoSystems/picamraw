@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org).
 
 
+## [1.2.0] - 2018-12-19
+### Changed
+- Fixed bug in assignment of low bits. Pixel value outputs may change by up to 4 DN (4/1024). Thanks to @6by9 for the [report](https://github.com/illes/raspiraw/issues/3).
+
+
 ## [1.1.0] - 2018-12-03
 ### Added
 - `PiRawBayer.to_rgb()` method that collapses the extracted raw bayer 2D array to a 3D RGB array, with no demosaicing other than averaging the two green channels.

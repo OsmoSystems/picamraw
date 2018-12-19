@@ -11,7 +11,7 @@ patch_version = os.environ.get('PATCH_VERSION', '0')
 
 setup(
     name='picamraw',
-    version='1.1.{patch_version}'.format(**locals()),
+    version='1.2.{patch_version}'.format(**locals()),
     author='Osmo Systems',
     author_email='dev@osmobot.com',
     description='Library for extracting raw bayer data from a Raspberry Pi JPEG+RAW file',
