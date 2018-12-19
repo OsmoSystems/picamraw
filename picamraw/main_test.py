@@ -165,12 +165,10 @@ class TestUnpack10BitValues:
             0b10010010,
             0b01001001,
             0b00000000,
-            # Fifth byte is made up of the 2-bit sets that will be paired with the first 4 bytes
-            # In this case, from least to most significant, those 2-bit sets will be
-            # 0b00, 0b01, 0b10, 0b11
-            # Note: within a set of bits, the "most significant" is printed first
-            # (because our normal number system is big-endian)
-            # so the 2-bit sets listed above are right-to-left when we represent the 5th byte:
+            # The fifth byte is made up of the 2-bit sets that will be paired with the first 4 bytes
+            # In this test those 2-bit sets will be
+            # 0b11 for byte 3, 0b10 for byte 2, 0b01 for byte 1, 0b00 for byte 0
+            # Mash those together and you get...
             0b11100100
         ]
         # Those 5 bytes are converted to 10-bit values

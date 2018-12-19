@@ -266,21 +266,21 @@ def _unpack_10bit_values(pixel_bytes_2d):
     # For lack of a better term, we'll call these the "byte cohorts" 0 through 3.
 
     # First, set aside cohort 4: the bytes that will be unpacked into the low bits to go with the first 4 bytes
-    fifth_bytes = pixel_bytes_2d[:, 4::5]
-    for byte_cohort in range(4):
+    cohort_4 = pixel_bytes_2d[:, 4::5]
+    for byte_cohort_index in range(4):
         # High bits come from the input array,
         # shifted left by two bits to make room for the low 2-bits which will come from the 5th byte
-        high_bits = pixel_bytes_2d[:, byte_cohort::5].astype(np.uint16) << 2
+        high_bits = pixel_bytes_2d[:, byte_cohort_index::5].astype(np.uint16) << 2
 
-        # Now process bits from the 5th byte and unpack the appropriate ones to be our low 2 bits:
+        # Now process bits from cohort 4 and unpack the appropriate ones to be our low 2 bits:
         # Shift the bits over so that the relevant ones are in the rightmost (lowest) position
         # eg. for byte 1, 0b00001100 -> 0b11
-        shifted_bits_from_fifth_bytes = fifth_bytes >> (byte_cohort * 2)
+        shifted_bits_from_cohort_4 = cohort_4 >> (byte_cohort_index * 2)
         # Mask the relevant ones (the lowest 2)
-        masked_low_bits = shifted_bits_from_fifth_bytes & 0b11
+        masked_low_bits = shifted_bits_from_cohort_4 & 0b11
 
         # Finally, put the masked low bits into their place in the output array
-        output_data[:, byte_cohort::4] = high_bits | masked_low_bits
+        output_data[:, byte_cohort_index::4] = high_bits | masked_low_bits
 
     return output_data
 
