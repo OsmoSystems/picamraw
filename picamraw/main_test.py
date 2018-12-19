@@ -158,6 +158,7 @@ class TestUnpack10BitValues:
     def test_unpack_10bit_values(self):
         # In the camera's RAW format, every 5 bytes in the source data contains the high 8-bits of
         # 4 values followed by the low 2-bits of 4 values packed into 5th byte.
+        # Spec: https://linuxtv.org/downloads/v4l-dvb-apis-new/uapi/v4l/pixfmt-srggb10p.html
         input_five_byte_set = [
             # Note: In python, "0b" appears to the left of any binary value.
             0b11111111,
@@ -175,8 +176,7 @@ class TestUnpack10BitValues:
         # Those 5 bytes are converted to 10-bit values
         # Each 10-bit output value will be made up of 8 bits from one of the first 4 input bytes
         # and 2 bits from the 5th input byte.
-        # The spec at https://linuxtv.org/downloads/v4l-dvb-apis-new/uapi/v4l/pixfmt-srggb10p.html
-        # determines which bits end up where, but I'll also explain inline:
+        # The spec linked above determines which bits end up where, but let's also lay it out inline:
         expected_ten_bit_outputs = [
             # The rightmost (least significant) 2-bits of the fifth source byte (0b00 in this case)
             # should end up as the low bits of the first input byte
