@@ -26,7 +26,7 @@ raw_bayer.to_3d()       # A 16-bit 3D numpy array of bayer data split into RGB c
 This package is tested using [`tox`](https://tox.readthedocs.io/).
 To run tests, simply `pip install tox` and then run `tox`.
 
-Note: this code has only been tested against an image captured with camera version V2 and sensor_mode 0.
+Note: this code is only expected to work with images captured with camera version V2 and sensor_mode 0 (e.g. `raspistill --raw -o myimage.jpg`). Raspbberry Pi Camera V1.x hardware is unsupported (see [#8](https://github.com/OsmoSystems/picamraw/issues/8)).
 
 
 # Attribution
